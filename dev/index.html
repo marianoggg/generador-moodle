@@ -77,17 +77,22 @@ button:disabled{
     padding:10px;
     background:#e3eaf2;
     cursor:pointer;
-    font-weight:bold;
     display:flex;
     justify-content:space-between;
     align-items:center;
+}
+
+.pregunta-header span:first-child{
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
 }
 
 .pregunta-body{
     padding:15px;
     overflow:hidden;
     transition:max-height 0.35s ease, opacity 0.25s ease;
-    max-height:2000px;
+    max-height:3000px;
     opacity:1;
 }
 
@@ -110,6 +115,13 @@ input[type="text"], textarea{
     font-size:14px;
 }
 
+select{
+    padding:6px;
+    border-radius:6px;
+    border:1px solid #ccc;
+    font-size:13px;
+}
+
 textarea{ resize:vertical; }
 
 .opcion{
@@ -127,6 +139,42 @@ textarea{ resize:vertical; }
 .pregunta-buttons{
     margin-top:10px;
     text-align:right;
+}
+
+.fila-horizontal{
+    display:flex;
+    gap:10px;
+    align-items:center;
+}
+
+.fila-horizontal input[type="text"]{
+    flex:2;
+}
+
+.fila-horizontal select{
+    flex:1;
+    max-width:180px;
+}
+
+.essay-config{
+    display:flex;
+    gap:8px;
+    align-items:center;
+    margin-bottom:8px;
+}
+
+.essay-config label{
+    font-size:12px;
+    display:flex;
+    flex-direction:column;
+    gap:2px;
+}
+
+.essay-config input{
+    width:70px;
+    padding:4px;
+    font-size:13px;
+    margin-bottom:0;
 }
 </style>
 </head>
@@ -203,12 +251,24 @@ function agregarPregunta(datos=null){
             wrapper.classList.contains("colapsada") ? "▶" : "▼";
     };
 
-    // ✅ CORREGIDO ACÁ
+    const filaSuperior=document.createElement("div");
+    filaSuperior.className="fila-horizontal";
+
     const nombre=document.createElement("input");
     nombre.type="text";
     nombre.placeholder="Nombre interno (no visible para el alumno)";
     nombre.value=datos?.nombre||"";
     nombre.oninput=validarTodo;
+
+    const tipoSelect=document.createElement("select");
+    tipoSelect.innerHTML=`
+        <option value="multichoice">Opción múltiple</option>
+        <option value="essay">Desarrollo (Essay)</option>
+    `;
+    tipoSelect.value=datos?.tipo||"multichoice";
+
+    filaSuperior.appendChild(nombre);
+    filaSuperior.appendChild(tipoSelect);
 
     const enunciado=document.createElement("textarea");
     enunciado.placeholder="Enunciado";
@@ -220,6 +280,46 @@ function agregarPregunta(datos=null){
     retro.value=datos?.retro||"";
 
     const opcionesDiv=document.createElement("div");
+    const essayDiv=document.createElement("div");
+    essayDiv.style.display="none";
+
+    const configDiv=document.createElement("div");
+    configDiv.className="essay-config";
+
+    const puntaje=document.createElement("input");
+    puntaje.type="number";
+    puntaje.placeholder="Puntaje";
+    puntaje.value=datos?.puntaje||1;
+    puntaje.min=0.1;
+    puntaje.step=0.1;
+    puntaje.oninput=validarTodo;
+
+    const lineas=document.createElement("input");
+    lineas.type="number";
+    lineas.placeholder="Líneas";
+    lineas.value=datos?.lineas||15;
+
+    const adjuntos=document.createElement("input");
+    adjuntos.type="number";
+    adjuntos.placeholder="Adjuntos";
+    adjuntos.value=datos?.adjuntos||0;
+
+    configDiv.appendChild(puntaje);
+    configDiv.appendChild(lineas);
+    configDiv.appendChild(adjuntos);
+
+    const label=document.createElement("div");
+    label.textContent="Configuración Essay";
+    label.style.fontSize="13px";
+    label.style.marginBottom="4px";
+
+    const graderinfo=document.createElement("textarea");
+    graderinfo.placeholder="Información para el corrector";
+    graderinfo.value=datos?.graderinfo||"";
+
+    essayDiv.appendChild(label);
+    essayDiv.appendChild(configDiv);
+    essayDiv.appendChild(graderinfo);
 
     if(datos?.opciones){
         datos.opciones.forEach(o=>{
@@ -234,6 +334,28 @@ function agregarPregunta(datos=null){
     btnAdd.textContent="Agregar opción";
     btnAdd.className="secondary";
     btnAdd.onclick=()=>opcionesDiv.appendChild(crearOpcion());
+
+    tipoSelect.onchange=()=>{
+        if(tipoSelect.value==="essay"){
+            opcionesDiv.innerHTML="";
+            opcionesDiv.style.display="none";
+            btnAdd.style.display="none";
+            essayDiv.style.display="block";
+        }else{
+            essayDiv.style.display="none";
+            opcionesDiv.style.display="block";
+            btnAdd.style.display="inline-block";
+            if(opcionesDiv.children.length<2){
+                opcionesDiv.appendChild(crearOpcion());
+                opcionesDiv.appendChild(crearOpcion());
+            }
+        }
+        validarTodo();
+    };
+
+    if(tipoSelect.value==="essay"){
+        tipoSelect.onchange();
+    }
 
     const botonesDiv=document.createElement("div");
     botonesDiv.className="pregunta-buttons";
@@ -254,11 +376,12 @@ function agregarPregunta(datos=null){
     botonesDiv.appendChild(btnDuplicar);
     botonesDiv.appendChild(btnEliminar);
 
-    body.appendChild(nombre);
+    body.appendChild(filaSuperior);
     body.appendChild(enunciado);
     body.appendChild(retro);
     body.appendChild(opcionesDiv);
     body.appendChild(btnAdd);
+    body.appendChild(essayDiv);
     body.appendChild(botonesDiv);
 
     wrapper.appendChild(header);
@@ -271,8 +394,6 @@ function agregarPregunta(datos=null){
     validarTodo();
 }
 
-/* --- resto del código igual --- */
-
 function actualizarTitulo(wrapper,enunciado){
     const texto=enunciado.value.trim();
     wrapper.querySelector(".pregunta-header span:first-child").textContent=
@@ -280,37 +401,52 @@ function actualizarTitulo(wrapper,enunciado){
 }
 
 function extraerDatos(wrapper){
-    const enunciado=wrapper.querySelector("textarea").value;
-    const retro=wrapper.querySelectorAll("textarea")[1].value;
+    const tipo=wrapper.querySelector("select").value;
+    const textareas=wrapper.querySelectorAll("textarea");
+
     const nombre=wrapper.querySelector("input[type='text']").value;
+    const enunciado=textareas[0].value;
+    const retro=textareas[1].value;
 
-    const opciones=[];
-    wrapper.querySelectorAll(".opcion").forEach(o=>{
-        opciones.push({
-            texto:o.querySelector("input[type=text]").value,
-            correcta:o.querySelector("input[type=checkbox]").checked
+    const data={tipo,nombre,enunciado,retro};
+
+    if(tipo==="multichoice"){
+        const opciones=[];
+        wrapper.querySelectorAll(".opcion").forEach(o=>{
+            opciones.push({
+                texto:o.querySelector("input[type=text]").value,
+                correcta:o.querySelector("input[type=checkbox]").checked
+            });
         });
-    });
+        data.opciones=opciones;
+    }else{
+        const inputs=wrapper.querySelectorAll("input[type='number']");
+        data.puntaje=parseFloat(inputs[0].value)||1;
+        data.lineas=parseInt(inputs[1].value)||15;
+        data.adjuntos=parseInt(inputs[2].value)||0;
+        data.graderinfo=textareas[2]?.value||"";
+    }
 
-    return {nombre,enunciado,retro,opciones};
+    return data;
 }
 
 function validarPregunta(wrapper){
-    const enunciado=wrapper.querySelector("textarea").value.trim();
-    const opciones=wrapper.querySelectorAll(".opcion");
+    const data=extraerDatos(wrapper);
 
+    if(data.tipo==="essay"){
+        return data.enunciado.trim()!=="" && data.puntaje>0;
+    }
+
+    const opciones=data.opciones;
     let validas=0;
     let correcta=false;
 
     opciones.forEach(o=>{
-        const texto=o.querySelector("input[type=text]").value.trim();
-        const check=o.querySelector("input[type=checkbox]").checked;
-
-        if(texto!=="") validas++;
-        if(check && texto!=="") correcta=true;
+        if(o.texto.trim()!=="") validas++;
+        if(o.correcta && o.texto.trim()!=="") correcta=true;
     });
 
-    return enunciado!=="" && validas>=2 && correcta;
+    return data.enunciado.trim()!=="" && validas>=2 && correcta;
 }
 
 function validarTodo(){
@@ -361,19 +497,33 @@ function cargarXML(event){
         document.getElementById("preguntas").innerHTML="";
 
         xmlDoc.querySelectorAll("question").forEach(q=>{
+            const tipo=q.getAttribute("type")||"multichoice";
             const nombre=q.querySelector("name text")?.textContent||"";
             const enunciado=q.querySelector("questiontext text")?.textContent||"";
             const retro=q.querySelector("generalfeedback text")?.textContent||"";
 
-            const opciones=[];
-            q.querySelectorAll("answer").forEach(a=>{
-                opciones.push({
-                    texto:a.querySelector("text").textContent,
-                    correcta:a.getAttribute("fraction")==100
+            if(tipo==="essay"){
+                agregarPregunta({
+                    tipo:"essay",
+                    nombre,
+                    enunciado,
+                    retro,
+                    puntaje:parseFloat(q.querySelector("defaultgrade")?.textContent)||1,
+                    lineas:parseInt(q.querySelector("responsefieldlines")?.textContent)||15,
+                    adjuntos:parseInt(q.querySelector("attachments")?.textContent)||0,
+                    graderinfo:q.querySelector("graderinfo text")?.textContent||""
                 });
-            });
+            }else{
+                const opciones=[];
+                q.querySelectorAll("answer").forEach(a=>{
+                    opciones.push({
+                        texto:a.querySelector("text").textContent,
+                        correcta:a.getAttribute("fraction")==100
+                    });
+                });
 
-            agregarPregunta({nombre,enunciado,retro,opciones});
+                agregarPregunta({tipo:"multichoice",nombre,enunciado,retro,opciones});
+            }
         });
 
         validarTodo();
@@ -389,17 +539,31 @@ function descargarXML(){
     document.querySelectorAll(".pregunta").forEach(p=>{
         const data=extraerDatos(p);
 
-        xml+=`<question type="multichoice">`;
-        xml+=`<name><text>${data.nombre}</text></name>`;
-        xml+=`<questiontext format="html"><text><![CDATA[${data.enunciado}]]></text></questiontext>`;
-        xml+=`<generalfeedback><text><![CDATA[${data.retro}]]></text></generalfeedback>`;
-        xml+=`<single>false</single>`;
+        if(data.tipo==="essay"){
+            xml+=`<question type="essay">`;
+            xml+=`<name><text>${data.nombre}</text></name>`;
+            xml+=`<questiontext format="html"><text><![CDATA[${data.enunciado}]]></text></questiontext>`;
+            xml+=`<defaultgrade>${data.puntaje}</defaultgrade>`;
+            xml+=`<responseformat>editor</responseformat>`;
+            xml+=`<responsefieldlines>${data.lineas}</responsefieldlines>`;
+            xml+=`<attachments>${data.adjuntos}</attachments>`;
+            xml+=`<attachmentsrequired>0</attachmentsrequired>`;
+            xml+=`<graderinfo format="html"><text><![CDATA[${data.graderinfo}]]></text></graderinfo>`;
+            xml+=`<generalfeedback format="html"><text><![CDATA[${data.retro}]]></text></generalfeedback>`;
+            xml+=`</question>`;
+        }else{
+            xml+=`<question type="multichoice">`;
+            xml+=`<name><text>${data.nombre}</text></name>`;
+            xml+=`<questiontext format="html"><text><![CDATA[${data.enunciado}]]></text></questiontext>`;
+            xml+=`<generalfeedback><text><![CDATA[${data.retro}]]></text></generalfeedback>`;
+            xml+=`<single>false</single>`;
 
-        data.opciones.forEach(o=>{
-            xml+=`<answer fraction="${o.correcta?100:0}"><text><![CDATA[${o.texto}]]></text></answer>`;
-        });
+            data.opciones.forEach(o=>{
+                xml+=`<answer fraction="${o.correcta?100:0}"><text><![CDATA[${o.texto}]]></text></answer>`;
+            });
 
-        xml+=`</question>`;
+            xml+=`</question>`;
+        }
     });
 
     xml+="</quiz>";
@@ -412,6 +576,5 @@ function descargarXML(){
 }
 
 </script>
-
 </body>
 </html>
