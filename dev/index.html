@@ -83,9 +83,12 @@ button:disabled{
 }
 
 .pregunta-header span:first-child{
+    display:inline-block;
+    max-width:calc(100% - 25px);
     white-space:nowrap;
     overflow:hidden;
     text-overflow:ellipsis;
+    vertical-align: middle;
 }
 
 .pregunta-body{
@@ -238,6 +241,15 @@ function crearOpcion(texto="",correcta=false){
     return div;
 }
 
+function actualizarTitulo(wrapper,enunciado){
+    const texto = enunciado.value.trim();
+    const span = wrapper.querySelector(".pregunta-header span:first-child");
+
+    // Limita a 50 caracteres + "…"
+    const resumen = texto.length > 150 ? texto.substr(0,150) + "…" : texto;
+    span.textContent = resumen !== "" ? resumen : "Pregunta";
+}
+
 function agregarPregunta(datos=null){
     const contenedor=document.getElementById("preguntas");
 
@@ -272,7 +284,6 @@ function agregarPregunta(datos=null){
         <option value="essay">Desarrollo (Essay)</option>
     `;
     tipoSelect.value=datos?.tipo||"multichoice";
-
     tipoSelect.style.height = "33px";
 
     filaSuperior.appendChild(nombre);
@@ -282,8 +293,7 @@ function agregarPregunta(datos=null){
     enunciado.placeholder="Enunciado";
     enunciado.value=datos?.enunciado||"";
     enunciado.oninput=()=>{ actualizarTitulo(wrapper,enunciado); validarTodo(); };
-    enunciado.style.height = "120px"; // o la altura que quieras
-
+    enunciado.style.height = "120px";
 
     const retro=document.createElement("textarea");
     retro.placeholder="Retroalimentación";
@@ -297,7 +307,6 @@ function agregarPregunta(datos=null){
     const configDiv = document.createElement("div");
     configDiv.className = "essay-config";
 
-    // Puntaje
     const campoPuntaje = document.createElement("div");
     campoPuntaje.className = "campo-essay";
     const labelPuntaje = document.createElement("label");
@@ -311,7 +320,6 @@ function agregarPregunta(datos=null){
     labelPuntaje.appendChild(puntaje);
     campoPuntaje.appendChild(labelPuntaje);
 
-    // Líneas
     const campoLineas = document.createElement("div");
     campoLineas.className = "campo-essay";
     const labelLineas = document.createElement("label");
@@ -322,7 +330,6 @@ function agregarPregunta(datos=null){
     labelLineas.appendChild(lineas);
     campoLineas.appendChild(labelLineas);
 
-    // Adjuntos
     const campoAdjuntos = document.createElement("div");
     campoAdjuntos.className = "campo-essay";
     const labelAdjuntos = document.createElement("label");
@@ -412,15 +419,12 @@ function agregarPregunta(datos=null){
 
     contenedor.appendChild(wrapper);
 
+    actualizarTitulo(wrapper, enunciado); // ✅ Actualiza resumen
     enunciado.focus();
     scrollAlFinal();
     validarTodo();
-}
 
-function actualizarTitulo(wrapper,enunciado){
-    const texto=enunciado.value.trim();
-    wrapper.querySelector(".pregunta-header span:first-child").textContent=
-        texto!==""?texto:"Pregunta";
+    return wrapper; // devuelve wrapper para usar en cargarXML
 }
 
 function extraerDatos(wrapper){
@@ -525,8 +529,10 @@ function cargarXML(event){
             const enunciado=q.querySelector("questiontext text")?.textContent||"";
             const retro=q.querySelector("generalfeedback text")?.textContent||"";
 
+            let wrapper;
+
             if(tipo==="essay"){
-                agregarPregunta({
+                wrapper = agregarPregunta({
                     tipo:"essay",
                     nombre,
                     enunciado,
@@ -545,8 +551,12 @@ function cargarXML(event){
                     });
                 });
 
-                agregarPregunta({tipo:"multichoice",nombre,enunciado,retro,opciones});
+                wrapper = agregarPregunta({tipo:"multichoice",nombre,enunciado,retro,opciones});
             }
+
+            // Actualiza resumen visible
+            const textarea = wrapper.querySelector("textarea");
+            actualizarTitulo(wrapper, textarea);
         });
 
         validarTodo();
