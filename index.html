@@ -203,9 +203,12 @@ function agregarPregunta(datos=null){
             wrapper.classList.contains("colapsada") ? "▶" : "▼";
     };
 
+    // ✅ CORREGIDO ACÁ
     const nombre=document.createElement("input");
+    nombre.type="text";
     nombre.placeholder="Nombre interno (no visible para el alumno)";
     nombre.value=datos?.nombre||"";
+    nombre.oninput=validarTodo;
 
     const enunciado=document.createElement("textarea");
     enunciado.placeholder="Enunciado";
@@ -268,6 +271,8 @@ function agregarPregunta(datos=null){
     validarTodo();
 }
 
+/* --- resto del código igual --- */
+
 function actualizarTitulo(wrapper,enunciado){
     const texto=enunciado.value.trim();
     wrapper.querySelector(".pregunta-header span:first-child").textContent=
@@ -277,7 +282,7 @@ function actualizarTitulo(wrapper,enunciado){
 function extraerDatos(wrapper){
     const enunciado=wrapper.querySelector("textarea").value;
     const retro=wrapper.querySelectorAll("textarea")[1].value;
-    const nombre=wrapper.querySelector("input").value;
+    const nombre=wrapper.querySelector("input[type='text']").value;
 
     const opciones=[];
     wrapper.querySelectorAll(".opcion").forEach(o=>{
