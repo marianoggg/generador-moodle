@@ -5,13 +5,26 @@
 <title>Generador XML Moodle</title>
 
 <style>
-* { box-sizing: border-box; }
+:root {
+    --bg-color: #f4f6f9;
+    --text-color: #000;
+    --header-bg: #e3eaf2;
+    --pregunta-bg: #fff;
+    --border-color: #ccc;
+    --btn-primary-bg: #1976d2;
+    --btn-success-bg: #2e7d32;
+    --btn-warning-bg: #f9a825;
+    --btn-danger-bg: #c62828;
+    --btn-secondary-bg: #607d8b;
+}
 
 body{
     font-family: Arial, sans-serif;
-    background:#f4f6f9;
+    background: var(--bg-color);
+    color: var(--text-color);
     margin:0;
     padding:20px;
+    transition: background 0.3s, color 0.3s;
 }
 
 h1{
@@ -22,7 +35,7 @@ h1{
 .status-bar{
     position:sticky;
     top:0;
-    background:#ffffff;
+    background: var(--pregunta-bg);
     padding:10px;
     margin-bottom:15px;
     border-radius:8px;
@@ -31,6 +44,7 @@ h1{
     justify-content:space-between;
     align-items:center;
     z-index:10;
+    transition: background 0.3s;
 }
 
 .top-buttons{
@@ -45,6 +59,7 @@ button{
     cursor:pointer;
     font-size:14px;
     margin:3px;
+    transition: background 0.3s;
 }
 
 button:disabled{
@@ -52,11 +67,11 @@ button:disabled{
     cursor:not-allowed;
 }
 
-.primary{ background:#1976d2; color:white; }
-.success{ background:#2e7d32; color:white; }
-.warning{ background:#f9a825; color:white; }
-.danger{ background:#c62828; color:white; }
-.secondary{ background:#607d8b; color:white; }
+.primary{ background: var(--btn-primary-bg); color:white; }
+.success{ background: var(--btn-success-bg); color:white; }
+.warning{ background: var(--btn-warning-bg); color:white; }
+.danger{ background: var(--btn-danger-bg); color:white; }
+.secondary{ background: var(--btn-secondary-bg); color:white; }
 
 #preguntas{
     max-height:500px;
@@ -65,26 +80,27 @@ button:disabled{
 }
 
 .pregunta{
-    background:white;
+    background: var(--pregunta-bg);
     margin-bottom:15px;
     border-radius:8px;
     box-shadow:0 2px 6px rgba(0,0,0,0.1);
     overflow:hidden;
-    transition:all 0.3s ease;
+    transition:all 0.3s ease, background 0.3s;
 }
 
 .pregunta-header{
     padding:10px;
-    background:#e3eaf2;
+    background: var(--header-bg);
     cursor:pointer;
     display:flex;
     justify-content:space-between;
     align-items:center;
+    transition: background 0.3s;
 }
 
 .pregunta-header span:first-child{
     display:inline-block;
-    max-width:calc(100% - 25px);
+    max-width: calc(100% - 25px);
     white-space:nowrap;
     overflow:hidden;
     text-overflow:ellipsis;
@@ -109,20 +125,16 @@ button:disabled{
 .completa{ border-left:6px solid #2e7d32; }
 .incompleta{ border-left:6px solid #c62828; }
 
-input[type="text"], input[type="number"], textarea{
+input[type="text"], input[type="number"], textarea, select{
     width:100%;
-    padding:8px;
+    padding:5px;
     margin-bottom:8px;
     border-radius:6px;
-    border:1px solid #ccc;
+    border:1px solid var(--border-color);
     font-size:14px;
-}
-
-select{
-    padding:5px;
-    border-radius:6px;
-    border:1px solid #ccc;
-    font-size:14px;
+    background: var(--pregunta-bg);
+    color: var(--text-color);
+    transition: background 0.3s, color 0.3s, border-color 0.3s;
 }
 
 textarea{ resize:vertical; }
@@ -159,7 +171,6 @@ textarea{ resize:vertical; }
     max-width:180px;
 }
 
-/* Configuración essay en fila horizontal */
 .essay-config{
     display:flex;
     gap:10px;
@@ -182,9 +193,49 @@ textarea{ resize:vertical; }
     padding:8px;
     font-size:14px;
     border-radius:6px;
-    border:1px solid #ccc;
+    border:1px solid var(--border-color);
     width:100%;
     box-sizing:border-box;
+}
+
+/* SWITCH MODO NOCHE */
+.switch {
+  position: relative;
+  display: inline-block;
+  width:50px;
+  height:24px;
+}
+
+.switch input {display:none;}
+
+.slider {
+  position:absolute;
+  cursor:pointer;
+  top:0; left:0;
+  right:0; bottom:0;
+  background:#ccc;
+  transition: .4s;
+  border-radius: 24px;
+}
+
+.slider:before {
+  position:absolute;
+  content:"";
+  height:18px;
+  width:18px;
+  left:3px;
+  bottom:3px;
+  background:white;
+  transition:.4s;
+  border-radius: 50%;
+}
+
+input:checked + .slider {
+  background:#2196F3;
+}
+
+input:checked + .slider:before {
+  transform: translateX(26px);
 }
 </style>
 </head>
@@ -194,6 +245,12 @@ textarea{ resize:vertical; }
 
 <div class="status-bar">
     <div id="contador">Completas: 0 | Incompletas: 0</div>
+    <div>
+        <label class="switch">
+          <input type="checkbox" id="modoNoche">
+          <span class="slider"></span>
+        </label>
+    </div>
     <button class="success" id="btnDescargar" onclick="descargarXML()" disabled>
         Descargar XML
     </button>
@@ -209,6 +266,24 @@ textarea{ resize:vertical; }
 <div id="preguntas"></div>
 
 <script>
+
+    const modoNocheSwitch = document.getElementById('modoNoche');
+modoNocheSwitch.addEventListener('change', ()=>{
+    if(modoNocheSwitch.checked){
+        document.documentElement.style.setProperty('--bg-color','#1e1e2f');
+        document.documentElement.style.setProperty('--text-color','#eee');
+        document.documentElement.style.setProperty('--header-bg','#2c2c3c');
+        document.documentElement.style.setProperty('--pregunta-bg','#2c2c3c');
+        document.documentElement.style.setProperty('--border-color','#555');
+    }else{
+        document.documentElement.style.setProperty('--bg-color','#f4f6f9');
+        document.documentElement.style.setProperty('--text-color','#000');
+        document.documentElement.style.setProperty('--header-bg','#e3eaf2');
+        document.documentElement.style.setProperty('--pregunta-bg','#fff');
+        document.documentElement.style.setProperty('--border-color','#ccc');
+    }
+});
+
 function scrollAlFinal(){
     const contenedor=document.getElementById("preguntas");
     contenedor.scrollTop=contenedor.scrollHeight;
