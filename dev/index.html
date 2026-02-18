@@ -395,6 +395,7 @@ function agregarPregunta(datos=null){
     `;
     tipoSelect.value=datos?.tipo||"multichoice";
     tipoSelect.style.height = "33px";
+    tipoSelect.style.padding = "5px 10px";
 
     filaSuperior.appendChild(nombre);
     filaSuperior.appendChild(tipoSelect);
