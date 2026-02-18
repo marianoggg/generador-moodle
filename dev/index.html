@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Generador XML Moodle</title>
+
+<style>
+* { box-sizing: border-box; }
+
+body{
+    font-family: Arial, sans-serif;
+    background:#f4f6f9;
+    margin:0;
+    padding:20px;
+}
+
+h1{
+    text-align:center;
+    margin-bottom:10px;
+}
+
+.status-bar{
+    position:sticky;
+    top:0;
+    background:#ffffff;
+    padding:10px;
+    margin-bottom:15px;
+    border-radius:8px;
+    box-shadow:0 2px 6px rgba(0,0,0,0.1);
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    z-index:10;
+}
+
+.top-buttons{
+    text-align:center;
+    margin-bottom:20px;
+}
+
+button{
+    padding:8px 14px;
+    border:none;
+    border-radius:6px;
+    cursor:pointer;
+    font-size:14px;
+    margin:3px;
+}
+
+button:disabled{
+    opacity:0.5;
+    cursor:not-allowed;
+}
+
+.primary{ background:#1976d2; color:white; }
+.success{ background:#2e7d32; color:white; }
+.warning{ background:#f9a825; color:white; }
+.danger{ background:#c62828; color:white; }
+.secondary{ background:#607d8b; color:white; }
+
+#preguntas{
+    max-height:500px;
+    overflow-y:auto;
+    padding-right:10px;
+}
+
+.pregunta{
+    background:white;
+    margin-bottom:15px;
+    border-radius:8px;
+    box-shadow:0 2px 6px rgba(0,0,0,0.1);
+    overflow:hidden;
+    transition:all 0.3s ease;
+}
+
+.pregunta-header{
+    padding:10px;
+    background:#e3eaf2;
+    cursor:pointer;
+    font-weight:bold;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+.pregunta-body{
+    padding:15px;
+    overflow:hidden;
+    transition:max-height 0.35s ease, opacity 0.25s ease;
+    max-height:2000px;
+    opacity:1;
+}
+
+.pregunta.colapsada .pregunta-body{
+    max-height:0;
+    opacity:0;
+    padding-top:0;
+    padding-bottom:0;
+}
+
+.completa{ border-left:6px solid #2e7d32; }
+.incompleta{ border-left:6px solid #c62828; }
+
+input[type="text"], textarea{
+    width:100%;
+    padding:8px;
+    margin-bottom:8px;
+    border-radius:6px;
+    border:1px solid #ccc;
+    font-size:14px;
+}
+
+textarea{ resize:vertical; }
+
+.opcion{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    margin-bottom:6px;
+}
+
+.opcion input[type="text"]{
+    flex:1;
+    margin-bottom:0;
+}
+
+.pregunta-buttons{
+    margin-top:10px;
+    text-align:right;
+}
+</style>
+</head>
+<body>
+
+<h1>Generador XML Moodle</h1>
+
+<div class="status-bar">
+    <div id="contador">Completas: 0 | Incompletas: 0</div>
+    <button class="success" id="btnDescargar" onclick="descargarXML()" disabled>
+        Descargar XML
+    </button>
+</div>
+
+<div class="top-buttons">
+    <button class="primary" onclick="agregarPregunta()">Agregar Pregunta</button>
+    <button class="secondary" onclick="document.getElementById('fileInput').click()">Cargar XML</button>
+    <button class="warning" onclick="resetFormulario()">Reset</button>
+    <input type="file" id="fileInput" accept=".xml" style="display:none" onchange="cargarXML(event)">
+</div>
+
+<div id="preguntas"></div>
+
+<script>
+
+function scrollAlFinal(){
+    const contenedor=document.getElementById("preguntas");
+    contenedor.scrollTop=contenedor.scrollHeight;
+}
+
+function crearOpcion(texto="",correcta=false){
+    const div=document.createElement("div");
+    div.className="opcion";
+
+    const checkbox=document.createElement("input");
+    checkbox.type="checkbox";
+    checkbox.checked=correcta;
+    checkbox.onchange=validarTodo;
+
+    const input=document.createElement("input");
+    input.type="text";
+    input.placeholder="Texto de opción";
+    input.value=texto;
+    input.oninput=validarTodo;
+
+    const btn=document.createElement("button");
+    btn.textContent="X";
+    btn.className="danger";
+    btn.onclick=()=>{ div.remove(); validarTodo(); };
+
+    div.appendChild(checkbox);
+    div.appendChild(input);
+    div.appendChild(btn);
+
+    return div;
+}
+
+function agregarPregunta(datos=null){
+    const contenedor=document.getElementById("preguntas");
+
+    const wrapper=document.createElement("div");
+    wrapper.className="pregunta incompleta";
+
+    const header=document.createElement("div");
+    header.className="pregunta-header";
+    header.innerHTML=`<span>Pregunta</span><span>▼</span>`;
+
+    const body=document.createElement("div");
+    body.className="pregunta-body";
+
+    header.onclick=()=>{
+        wrapper.classList.toggle("colapsada");
+        header.querySelector("span:last-child").textContent =
+            wrapper.classList.contains("colapsada") ? "▶" : "▼";
+    };
+
+    // ✅ CORREGIDO ACÁ
+    const nombre=document.createElement("input");
+    nombre.type="text";
+    nombre.placeholder="Nombre interno (no visible para el alumno)";
+    nombre.value=datos?.nombre||"";
+    nombre.oninput=validarTodo;
+
+    const enunciado=document.createElement("textarea");
+    enunciado.placeholder="Enunciado";
+    enunciado.value=datos?.enunciado||"";
+    enunciado.oninput=()=>{ actualizarTitulo(wrapper,enunciado); validarTodo(); };
+
+    const retro=document.createElement("textarea");
+    retro.placeholder="Retroalimentación";
+    retro.value=datos?.retro||"";
+
+    const opcionesDiv=document.createElement("div");
+
+    if(datos?.opciones){
+        datos.opciones.forEach(o=>{
+            opcionesDiv.appendChild(crearOpcion(o.texto,o.correcta));
+        });
+    }else{
+        opcionesDiv.appendChild(crearOpcion());
+        opcionesDiv.appendChild(crearOpcion());
+    }
+
+    const btnAdd=document.createElement("button");
+    btnAdd.textContent="Agregar opción";
+    btnAdd.className="secondary";
+    btnAdd.onclick=()=>opcionesDiv.appendChild(crearOpcion());
+
+    const botonesDiv=document.createElement("div");
+    botonesDiv.className="pregunta-buttons";
+
+    const btnDuplicar=document.createElement("button");
+    btnDuplicar.textContent="Duplicar";
+    btnDuplicar.className="primary";
+    btnDuplicar.onclick=()=>{
+        const datos=extraerDatos(wrapper);
+        agregarPregunta(datos);
+    };
+
+    const btnEliminar=document.createElement("button");
+    btnEliminar.textContent="Eliminar";
+    btnEliminar.className="danger";
+    btnEliminar.onclick=()=>{wrapper.remove(); validarTodo();};
+
+    botonesDiv.appendChild(btnDuplicar);
+    botonesDiv.appendChild(btnEliminar);
+
+    body.appendChild(nombre);
+    body.appendChild(enunciado);
+    body.appendChild(retro);
+    body.appendChild(opcionesDiv);
+    body.appendChild(btnAdd);
+    body.appendChild(botonesDiv);
+
+    wrapper.appendChild(header);
+    wrapper.appendChild(body);
+
+    contenedor.appendChild(wrapper);
+
+    enunciado.focus();
+    scrollAlFinal();
+    validarTodo();
+}
+
+/* --- resto del código igual --- */
+
+function actualizarTitulo(wrapper,enunciado){
+    const texto=enunciado.value.trim();
+    wrapper.querySelector(".pregunta-header span:first-child").textContent=
+        texto!==""?texto:"Pregunta";
+}
+
+function extraerDatos(wrapper){
+    const enunciado=wrapper.querySelector("textarea").value;
+    const retro=wrapper.querySelectorAll("textarea")[1].value;
+    const nombre=wrapper.querySelector("input[type='text']").value;
+
+    const opciones=[];
+    wrapper.querySelectorAll(".opcion").forEach(o=>{
+        opciones.push({
+            texto:o.querySelector("input[type=text]").value,
+            correcta:o.querySelector("input[type=checkbox]").checked
+        });
+    });
+
+    return {nombre,enunciado,retro,opciones};
+}
+
+function validarPregunta(wrapper){
+    const enunciado=wrapper.querySelector("textarea").value.trim();
+    const opciones=wrapper.querySelectorAll(".opcion");
+
+    let validas=0;
+    let correcta=false;
+
+    opciones.forEach(o=>{
+        const texto=o.querySelector("input[type=text]").value.trim();
+        const check=o.querySelector("input[type=checkbox]").checked;
+
+        if(texto!=="") validas++;
+        if(check && texto!=="") correcta=true;
+    });
+
+    return enunciado!=="" && validas>=2 && correcta;
+}
+
+function validarTodo(){
+    const preguntas=document.querySelectorAll(".pregunta");
+    let completas=0;
+    let incompletas=0;
+
+    preguntas.forEach(p=>{
+        if(validarPregunta(p)){
+            completas++;
+            p.classList.add("completa");
+            p.classList.remove("incompleta");
+        }else{
+            incompletas++;
+            p.classList.add("incompleta");
+            p.classList.remove("completa");
+        }
+    });
+
+    document.getElementById("contador").textContent=
+        `Completas: ${completas} | Incompletas: ${incompletas}`;
+
+    document.getElementById("btnDescargar").disabled=
+        incompletas>0 || preguntas.length===0;
+}
+
+function resetFormulario(){
+    if(confirm("Se perderá todo el contenido actual. ¿Continuar?")){
+        document.getElementById("preguntas").innerHTML="";
+        validarTodo();
+    }
+}
+
+function cargarXML(event){
+    const file=event.target.files[0];
+    if(!file) return;
+
+    if(!confirm("Se reemplazará el contenido actual. ¿Continuar?")){
+        event.target.value="";
+        return;
+    }
+
+    const reader=new FileReader();
+    reader.onload=function(e){
+        const parser=new DOMParser();
+        const xmlDoc=parser.parseFromString(e.target.result,"text/xml");
+
+        document.getElementById("preguntas").innerHTML="";
+
+        xmlDoc.querySelectorAll("question").forEach(q=>{
+            const nombre=q.querySelector("name text")?.textContent||"";
+            const enunciado=q.querySelector("questiontext text")?.textContent||"";
+            const retro=q.querySelector("generalfeedback text")?.textContent||"";
+
+            const opciones=[];
+            q.querySelectorAll("answer").forEach(a=>{
+                opciones.push({
+                    texto:a.querySelector("text").textContent,
+                    correcta:a.getAttribute("fraction")==100
+                });
+            });
+
+            agregarPregunta({nombre,enunciado,retro,opciones});
+        });
+
+        validarTodo();
+    };
+
+    reader.readAsText(file);
+    event.target.value="";
+}
+
+function descargarXML(){
+    let xml='<?xml version="1.0" encoding="UTF-8"?><quiz>';
+
+    document.querySelectorAll(".pregunta").forEach(p=>{
+        const data=extraerDatos(p);
+
+        xml+=`<question type="multichoice">`;
+        xml+=`<name><text>${data.nombre}</text></name>`;
+        xml+=`<questiontext format="html"><text><![CDATA[${data.enunciado}]]></text></questiontext>`;
+        xml+=`<generalfeedback><text><![CDATA[${data.retro}]]></text></generalfeedback>`;
+        xml+=`<single>false</single>`;
+
+        data.opciones.forEach(o=>{
+            xml+=`<answer fraction="${o.correcta?100:0}"><text><![CDATA[${o.texto}]]></text></answer>`;
+        });
+
+        xml+=`</question>`;
+    });
+
+    xml+="</quiz>";
+
+    const blob=new Blob([xml],{type:"text/xml"});
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(blob);
+    a.download="preguntas.xml";
+    a.click();
+}
+
+</script>
+
+</body>
+</html>
