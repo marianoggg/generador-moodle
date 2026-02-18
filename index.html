@@ -106,7 +106,7 @@ button:disabled{
 .completa{ border-left:6px solid #2e7d32; }
 .incompleta{ border-left:6px solid #c62828; }
 
-input[type="text"], textarea{
+input[type="text"], input[type="number"], textarea{
     width:100%;
     padding:8px;
     margin-bottom:8px;
@@ -116,10 +116,10 @@ input[type="text"], textarea{
 }
 
 select{
-    padding:6px;
+    padding:5px;
     border-radius:6px;
     border:1px solid #ccc;
-    font-size:13px;
+    font-size:14px;
 }
 
 textarea{ resize:vertical; }
@@ -144,7 +144,7 @@ textarea{ resize:vertical; }
 .fila-horizontal{
     display:flex;
     gap:10px;
-    align-items:center;
+    align-items:flex-start;
 }
 
 .fila-horizontal input[type="text"]{
@@ -156,25 +156,32 @@ textarea{ resize:vertical; }
     max-width:180px;
 }
 
+/* Configuración essay en fila horizontal */
 .essay-config{
     display:flex;
-    gap:8px;
-    align-items:center;
+    gap:10px;
+    align-items:flex-start;
     margin-bottom:8px;
 }
 
-.essay-config label{
-    font-size:12px;
+.essay-config .campo-essay{
     display:flex;
     flex-direction:column;
-    gap:2px;
+    flex:1;
+}
+
+.essay-config label{
+    font-size:13px;
+    margin-bottom:4px;
 }
 
 .essay-config input{
-    width:70px;
-    padding:4px;
-    font-size:13px;
-    margin-bottom:0;
+    padding:8px;
+    font-size:14px;
+    border-radius:6px;
+    border:1px solid #ccc;
+    width:100%;
+    box-sizing:border-box;
 }
 </style>
 </head>
@@ -199,7 +206,6 @@ textarea{ resize:vertical; }
 <div id="preguntas"></div>
 
 <script>
-
 function scrollAlFinal(){
     const contenedor=document.getElementById("preguntas");
     contenedor.scrollTop=contenedor.scrollHeight;
@@ -267,6 +273,8 @@ function agregarPregunta(datos=null){
     `;
     tipoSelect.value=datos?.tipo||"multichoice";
 
+    tipoSelect.style.height = "33px";
+
     filaSuperior.appendChild(nombre);
     filaSuperior.appendChild(tipoSelect);
 
@@ -274,6 +282,8 @@ function agregarPregunta(datos=null){
     enunciado.placeholder="Enunciado";
     enunciado.value=datos?.enunciado||"";
     enunciado.oninput=()=>{ actualizarTitulo(wrapper,enunciado); validarTodo(); };
+    enunciado.style.height = "120px"; // o la altura que quieras
+
 
     const retro=document.createElement("textarea");
     retro.placeholder="Retroalimentación";
@@ -283,41 +293,54 @@ function agregarPregunta(datos=null){
     const essayDiv=document.createElement("div");
     essayDiv.style.display="none";
 
-    const configDiv=document.createElement("div");
-    configDiv.className="essay-config";
+    /* CONFIGURACIÓN ESSAY EN FILA HORIZONTAL */
+    const configDiv = document.createElement("div");
+    configDiv.className = "essay-config";
 
-    const puntaje=document.createElement("input");
-    puntaje.type="number";
-    puntaje.placeholder="Puntaje";
-    puntaje.value=datos?.puntaje||1;
-    puntaje.min=0.1;
-    puntaje.step=0.1;
-    puntaje.oninput=validarTodo;
+    // Puntaje
+    const campoPuntaje = document.createElement("div");
+    campoPuntaje.className = "campo-essay";
+    const labelPuntaje = document.createElement("label");
+    labelPuntaje.textContent = "Puntaje:";
+    const puntaje = document.createElement("input");
+    puntaje.type = "number";
+    puntaje.value = datos?.puntaje || 1;
+    puntaje.min = 0.1;
+    puntaje.step = 0.1;
+    puntaje.oninput = validarTodo;
+    labelPuntaje.appendChild(puntaje);
+    campoPuntaje.appendChild(labelPuntaje);
 
-    const lineas=document.createElement("input");
-    lineas.type="number";
-    lineas.placeholder="Líneas";
-    lineas.value=datos?.lineas||15;
+    // Líneas
+    const campoLineas = document.createElement("div");
+    campoLineas.className = "campo-essay";
+    const labelLineas = document.createElement("label");
+    labelLineas.textContent = "Líneas:";
+    const lineas = document.createElement("input");
+    lineas.type = "number";
+    lineas.value = datos?.lineas || 15;
+    labelLineas.appendChild(lineas);
+    campoLineas.appendChild(labelLineas);
 
-    const adjuntos=document.createElement("input");
-    adjuntos.type="number";
-    adjuntos.placeholder="Adjuntos";
-    adjuntos.value=datos?.adjuntos||0;
+    // Adjuntos
+    const campoAdjuntos = document.createElement("div");
+    campoAdjuntos.className = "campo-essay";
+    const labelAdjuntos = document.createElement("label");
+    labelAdjuntos.textContent = "Adjuntos:";
+    const adjuntos = document.createElement("input");
+    adjuntos.type = "number";
+    adjuntos.value = datos?.adjuntos || 0;
+    labelAdjuntos.appendChild(adjuntos);
+    campoAdjuntos.appendChild(labelAdjuntos);
 
-    configDiv.appendChild(puntaje);
-    configDiv.appendChild(lineas);
-    configDiv.appendChild(adjuntos);
-
-    const label=document.createElement("div");
-    label.textContent="Configuración Essay";
-    label.style.fontSize="13px";
-    label.style.marginBottom="4px";
+    configDiv.appendChild(campoPuntaje);
+    configDiv.appendChild(campoLineas);
+    configDiv.appendChild(campoAdjuntos);
 
     const graderinfo=document.createElement("textarea");
     graderinfo.placeholder="Información para el corrector";
     graderinfo.value=datos?.graderinfo||"";
 
-    essayDiv.appendChild(label);
     essayDiv.appendChild(configDiv);
     essayDiv.appendChild(graderinfo);
 
@@ -420,7 +443,7 @@ function extraerDatos(wrapper){
         });
         data.opciones=opciones;
     }else{
-        const inputs=wrapper.querySelectorAll("input[type='number']");
+        const inputs=wrapper.querySelectorAll(".essay-config input[type=number]");
         data.puntaje=parseFloat(inputs[0].value)||1;
         data.lineas=parseInt(inputs[1].value)||15;
         data.adjuntos=parseInt(inputs[2].value)||0;
@@ -574,7 +597,6 @@ function descargarXML(){
     a.download="preguntas.xml";
     a.click();
 }
-
 </script>
 </body>
 </html>
