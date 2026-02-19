@@ -1,0 +1,279 @@
+* { box-sizing: border-box; }
+
+body {
+    font-family: 'Quicksand', sans-serif;
+    background:#f4f6f9;
+    margin:0;
+    padding:20px;
+    transition: background 0.3s, color 0.3s;
+    overflow: hidden;
+}
+
+body.night {
+    background:#2c2c34;
+    color:#e0e0e0;
+}
+
+h1{
+    text-align:center;
+    margin-bottom:10px;
+    font-weight:600;
+    color:#1976d2;
+}
+
+.status-bar{
+    position:sticky;
+    top:0;
+    background:#ffffff;
+    padding:10px;
+    margin-bottom:15px;
+    border-radius:12px;
+    box-shadow:0 4px 8px rgba(0,0,0,0.12);
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    z-index:10;
+    transition: background 0.3s, color 0.3s;
+    gap: 24px;
+}
+
+body.night .status-bar {
+    background:#3a3a45;
+    color:#f0f0f0;
+}
+
+.top-buttons{
+    text-align:center;
+    margin-bottom:20px;
+}
+
+button{
+    padding:8px 14px;
+    border:none;
+    border-radius:20px;
+    cursor:pointer;
+    font-size:14px;
+    margin:3px;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+button:hover{
+    transform: scale(1.05);
+    box-shadow:0 4px 8px rgba(0,0,0,0.2);
+}
+
+button:disabled{
+    opacity:0.5;
+    cursor:not-allowed;
+}
+
+.primary{ background:#1976d2; color:white; }
+.success{ background:#2e7d32; color:white; }
+.warning{ background:#f9a825; color:white; }
+.danger{ background:#c62828; color:white; }
+.secondary{ background:#607d8b; color:white; }
+
+body.night .primary{ background:#4dabf5; }
+body.night .success{ background:#4caf70; }
+body.night .warning{ background:#fbc02d; }
+body.night .danger{ background:#e57373; }
+body.night .secondary{ background:#90a4ae; }
+
+#preguntas{
+    max-height:60vh; 
+    overflow-y:auto;
+    padding-right:10px;
+    background: inherit; 
+    scrollbar-color: #afafaf4f #f1f1f100;
+}
+
+.pregunta{
+    background:white;
+    margin-bottom:15px;
+    border-radius:12px;
+    box-shadow:0 3px 6px rgba(0,0,0,0.1);
+    overflow:hidden;
+    transition:all 0.3s ease, background 0.3s;
+}
+
+.pregunta-header{
+    padding:12px;
+    background:#e3eaf2;
+    cursor:pointer;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    font-weight:500;
+    transition: background 0.3s;
+}
+
+body.night .pregunta-header{
+    background:#4a4a57;
+}
+
+body.night .pregunta {
+    background:#3b3b47; 
+}
+
+.pregunta-header span:first-child{
+    display:inline-block;
+    max-width:80%;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    vertical-align: middle;
+}
+
+.pregunta-body{
+    padding:15px;
+    overflow:hidden;
+    transition:max-height 0.35s ease, opacity 0.25s ease, background 0.3s;
+    max-height:3000px;
+    opacity:1;
+}
+
+.pregunta.colapsada .pregunta-body{
+    max-height:0;
+    opacity:0;
+    padding-top:0;
+    padding-bottom:0;
+}
+
+.completa{ border-left:6px solid #2e7d32; }
+.incompleta{ border-left:6px solid #c62828; }
+
+input[type="text"], input[type="number"], textarea, select{
+    width:100%;
+    padding:8px 10px;
+    margin-bottom:8px;
+    border-radius:12px;
+    border:1px solid #ccc;
+    font-size:14px;
+    transition: background 0.3s, color 0.3s, border 0.3s;
+}
+
+body.night input[type="text"],
+body.night input[type="number"],
+body.night textarea,
+body.night select{
+    background:#2f2f3a;
+    color:#e0e0e0;
+    border:1px solid #555;
+}
+
+textarea{ resize:vertical; }
+
+.opcion{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    margin-bottom:6px;
+}
+
+.opcion input[type="text"]{
+    flex:1;
+    margin-bottom:0;
+}
+
+.pregunta-buttons{
+    margin-top:10px;
+    text-align:right;
+}
+
+.fila-horizontal{
+    display:flex;
+    gap:10px;
+    align-items:flex-start;
+}
+
+.fila-horizontal input[type="text"]{
+    flex:2;
+}
+
+.fila-horizontal select{
+    flex:1;
+    max-width:180px;
+}
+
+/* Configuración essay en fila horizontal */
+.essay-config{
+    display:flex;
+    gap:10px;
+    align-items:flex-start;
+    margin-bottom:8px;
+}
+
+.essay-config .campo-essay{
+    display:flex;
+    flex-direction:column;
+    flex:1;
+}
+
+.essay-config label{
+    font-size:13px;
+    margin-bottom:4px;
+}
+
+.essay-config input{
+    padding:8px;
+    font-size:14px;
+    border-radius:8px;
+    border:1px solid #ccc;
+    width:100%;
+    box-sizing:border-box;
+}
+
+/* Toggle modo noche estilo Fiat 500 */
+.toggle-switch{
+    position:relative;
+    display:inline-block;
+    width:60px;
+    height:30px;
+}
+
+.toggle-switch input{
+    opacity: 0;
+    width: 60px;
+    height: 30px;
+    position: absolute;
+    left: 0;
+    top: 0;
+    cursor: pointer;
+    z-index: 2;
+}
+
+.slider{
+    position:absolute;
+    cursor:pointer;
+    top:0;
+    left:0;
+    right:0;
+    bottom:0;
+    background:#ccc;
+    border-radius:30px;
+    transition:0.4s;
+}
+
+.slider::before{
+    position:absolute;
+    content:"🌞";
+    height:26px;
+    width:26px;
+    left:2px;
+    bottom:2px;
+    background:white;
+    border-radius:50%;
+    text-align:center;
+    line-height:26px;
+    font-size:16px;
+    transition:0.4s;
+}
+
+input:checked + .slider{
+    background:#444;
+}
+
+input:checked + .slider::before{
+    transform: translateX(30px);
+    content:"🌙";
+}
