@@ -288,7 +288,7 @@ input:checked + .slider::before{
 </head>
 <body>
 
-<h1 style="padding-bottom: 10px;">Generador XML Moodle</h1>
+<h1 style="padding-bottom: 10px;">Generador de preguntas para Moodle</h1>
 
 <div class="status-bar">
     <div id="contador">Completas: 0 | Incompletas: 0</div>
@@ -313,6 +313,9 @@ input:checked + .slider::before{
 
 
 <script>
+
+let tipoDefault = "multichoice"; // valor inicial por defecto
+
 // Toggle modo noche
 document.getElementById("toggleNight").addEventListener("change", function(){
     document.body.classList.toggle("night", this.checked);
@@ -392,9 +395,9 @@ function agregarPregunta(datos=null){
     const tipoSelect=document.createElement("select");
     tipoSelect.innerHTML=`
         <option value="multichoice">Opción múltiple</option>
-        <option value="essay">Desarrollo (Essay)</option>
+        <option value="essay">Ensayo</option>
     `;
-    tipoSelect.value=datos?.tipo||"multichoice";
+    tipoSelect.value = datos?.tipo || tipoDefault;
     tipoSelect.style.height = "33px";
     tipoSelect.style.padding = "5px 10px";
 
@@ -482,6 +485,8 @@ function agregarPregunta(datos=null){
 };
 
     tipoSelect.onchange=()=>{
+        tipoDefault = tipoSelect.value;
+        
         if(tipoSelect.value==="essay"){
             opcionesDiv.innerHTML="";
             opcionesDiv.style.display="none";
