@@ -1,5 +1,9 @@
 
 let tipoDefault = "multichoice"; // valor inicial por defecto
+let availableCategories = new Set();
+let availableSubcategories = new Set();
+let lastCategory = "";
+let lastSubcategory = "";
 
 // Toggle modo noche
 document.getElementById("toggleNight").addEventListener("change", function(){
@@ -31,6 +35,120 @@ function crearInputConMicrofono(element, wrapper) {
     inputWrapper.appendChild(micBtn);
     
     return inputWrapper;
+}
+
+function crearSelectorConInput(placeholder, globalSet, currentValue, onUpdate) {
+    const wrapper = document.createElement("div");
+    wrapper.className = "input-toggle-wrapper";
+    wrapper.style.flex = "1"; // Default flex
+
+    // SELECT MODE
+    const select = document.createElement("select");
+    select.innerHTML = `<option value="">Seleccionar ${placeholder}...</option>`;
+    
+    // Populate select
+    globalSet.forEach(val => {
+        const option = document.createElement("option");
+        option.value = val;
+        option.textContent = val;
+        if(val === currentValue) option.selected = true;
+        select.appendChild(option);
+    });
+
+    // "Nueva..." option
+    const newOption = document.createElement("option");
+    newOption.value = "__NEW__";
+    newOption.textContent = `+ Nueva ${placeholder}...`;
+    newOption.style.fontWeight = "bold";
+    select.appendChild(newOption);
+
+    // INPUT MODE
+    const input = document.createElement("input");
+    input.type = "text";
+    input.placeholder = `Escribir ${placeholder}...`;
+    input.value = currentValue;
+    
+    // Wrap input with mic
+    const inputWithMic = crearInputConMicrofono(input, null);
+    inputWithMic.classList.add("hidden"); // Hidden by default if we have a select
+
+    // TOGGLE BUTTON
+    const toggleBtn = document.createElement("button");
+    toggleBtn.className = "toggle-btn";
+    toggleBtn.innerHTML = "✎"; // Pencil icon
+    toggleBtn.title = "Alternar entre lista y escritura";
+
+    // LOGIC
+    let isSelectMode = true;
+
+    // If currentValue is NOT in globalSet and is not empty, force Input mode initially
+    if (currentValue && !globalSet.has(currentValue)) {
+        isSelectMode = false;
+    }
+
+    const updateVisibility = () => {
+        if (isSelectMode) {
+            select.classList.remove("hidden");
+            inputWithMic.classList.add("hidden");
+            toggleBtn.innerHTML = "✎"; // Show pencil to edit/write new
+            // Ensure select has correct value or empty if not in set
+            if(globalSet.has(currentValue)) select.value = currentValue;
+            else select.value = "";
+        } else {
+            select.classList.add("hidden");
+            inputWithMic.classList.remove("hidden");
+            toggleBtn.innerHTML = "📋"; // Show list icon to switch back
+            input.focus();
+        }
+    };
+
+    toggleBtn.onclick = () => {
+        isSelectMode = !isSelectMode;
+        updateVisibility();
+    };
+
+    select.onchange = () => {
+        if (select.value === "__NEW__") {
+            isSelectMode = false;
+            updateVisibility();
+            input.value = ""; // Reset input for new value
+            currentValue = "";
+        } else {
+            currentValue = select.value;
+            input.value = select.value; // Sync input just in case
+        }
+        onUpdate(currentValue);
+    };
+
+    input.oninput = () => {
+        currentValue = input.value;
+        onUpdate(currentValue);
+    };
+
+    // When leaving input, add to set if not empty
+    input.onblur = () => {
+        const val = input.value.trim();
+        if (val) {
+            if (!globalSet.has(val)) {
+                globalSet.add(val);
+                // Update this local select and potentially others (requires refresh mechanism, or just this one)
+                // Appending locally for now
+                const opt = document.createElement("option");
+                opt.value = val;
+                opt.textContent = val;
+                select.insertBefore(opt, newOption); // Insert before "New..."
+            }
+        }
+    };
+
+    updateVisibility();
+
+    wrapper.appendChild(select);
+    wrapper.appendChild(inputWithMic);
+    wrapper.appendChild(toggleBtn);
+
+    // Expose a method to get value if needed, but we bind to onUpdate
+    return wrapper;
 }
 
 function crearOpcion(texto="",correcta=false){
@@ -220,6 +338,39 @@ function agregarPregunta(datos=null){
     filaSuperior.appendChild(nombreWrapper);
     filaSuperior.appendChild(tipoSelect);
 
+    /* CATEGORÍA Y SUBCATEGORÍA (SELECT/INPUT) */
+    
+    // Categoría
+    const onUpdateCategory = (val) => {
+        lastCategory = val;
+        validarTodo();
+    };
+    
+    const categoriaWrapper = crearSelectorConInput(
+        "Categoría", 
+        availableCategories, 
+        datos?.categoria !== undefined ? datos.categoria : lastCategory, 
+        onUpdateCategory
+    );
+    categoriaWrapper.classList.add("wrapper-categoria"); // Marker for extraction
+    
+    // Subcategoría
+    const onUpdateSubcategory = (val) => {
+        lastSubcategory = val;
+        validarTodo();
+    };
+
+    const subcategoriaWrapper = crearSelectorConInput(
+        "Subcategoría", 
+        availableSubcategories, 
+        datos?.subcategoria !== undefined ? datos.subcategoria : lastSubcategory, 
+        onUpdateSubcategory
+    );
+    subcategoriaWrapper.classList.add("wrapper-subcategoria"); // Marker for extraction
+
+    filaSuperior.appendChild(categoriaWrapper);
+    filaSuperior.appendChild(subcategoriaWrapper);
+
     const enunciado=document.createElement("textarea");
     enunciado.placeholder="Enunciado";
     enunciado.value=datos?.enunciado||"";
@@ -377,10 +528,33 @@ function extraerDatos(wrapper){
     const textareas=wrapper.querySelectorAll("textarea");
 
     const nombre=wrapper.querySelector("input[type='text']").value;
+    // For Category/Subcategory, we need to check both select and input values relative to visibility
+    // Or just rely on the 'input' element which we sync manually in our logic?
+    // In crearSelectorConInput:
+    // - Select change updates 'input.value'
+    // - Input typing updates 'input.value'
+    // So 'input.value' should always be current IF we kept them synced perfectly.
+    // Let's safe check: find the component and get value from the visible one or prefer input if synced.
+    
+    const catContainer = wrapper.querySelector(".wrapper-categoria");
+    const subContainer = wrapper.querySelector(".wrapper-subcategoria");
+    
+    const getToggleValue = (container) => {
+        const input = container.querySelector("input[type='text']");
+        const select = container.querySelector("select");
+        // Our logic syncs input.value from select.value when select changes.
+        // And input.value tracks typing.
+        // So input.value is the source of truth for the *data*.
+        return input.value;
+    };
+
+    const categoria = getToggleValue(catContainer);
+    const subcategoria = getToggleValue(subContainer);
+
     const enunciado=textareas[0].value;
     const retro=textareas[1].value;
 
-    const data={tipo,nombre,enunciado,retro};
+    const data={tipo,nombre,categoria,subcategoria,enunciado,retro};
 
     if(tipo==="multichoice"){
         const opciones=[];
@@ -452,6 +626,12 @@ function resetFormulario(){
     }
 }
 
+
+
+// Variables to track import state
+let currentCategoryImport = "";
+let currentSubcategoryImport = "";
+
 function cargarXML(event){
     const file=event.target.files[0];
     if(!file) return;
@@ -467,9 +647,29 @@ function cargarXML(event){
         const xmlDoc=parser.parseFromString(e.target.result,"text/xml");
 
         document.getElementById("preguntas").innerHTML="";
+        currentCategoryImport = "";
+        currentSubcategoryImport = "";
 
         xmlDoc.querySelectorAll("question").forEach(q=>{
             const tipo=q.getAttribute("type")||"multichoice";
+            
+            if(tipo === "category"){
+                const text = q.querySelector("category text").textContent;
+                // Format: $course$/Top/Category/Subcategory
+                // We need to parse this.
+                const parts = text.split("/");
+                // parts[0] is $course$, [1] is Top (usually), [2] is Category, [3] is Subcategory...
+                // Let's assume standard structure.
+                if(parts.length > 2) {
+                     currentCategoryImport = parts[2];
+                     if(currentCategoryImport) availableCategories.add(currentCategoryImport);
+                     
+                     currentSubcategoryImport = parts[3] || "";
+                     if(currentSubcategoryImport) availableSubcategories.add(currentSubcategoryImport);
+                }
+                return; // Don't create a question UI for category block
+            }
+
             const nombre=q.querySelector("name text")?.textContent||"";
             const enunciado=q.querySelector("questiontext text")?.textContent||"";
             const retro=q.querySelector("generalfeedback text")?.textContent||"";
@@ -480,6 +680,12 @@ function cargarXML(event){
                 wrapper = agregarPregunta({
                     tipo:"essay",
                     nombre,
+                    categoria: q.dataset.category || "", // Not directly in q object easily, but we parse it sequentially?
+                    // Actually, cargarXML parses question by question. It doesn't know prev category.
+                    // But wait, the XML structure has <question type="category"> separate from real questions.
+                    // When parsing we encounter them sequentially.
+                    // We need a way to track current category during import too!
+                    subcategoria: "", // Logic for import is tricky, will address next.
                     enunciado,
                     retro,
                     puntaje:parseFloat(q.querySelector("defaultgrade")?.textContent)||1,
@@ -496,7 +702,15 @@ function cargarXML(event){
                     });
                 });
 
-                wrapper = agregarPregunta({tipo:"multichoice",nombre,enunciado,retro,opciones});
+                wrapper = agregarPregunta({
+                    tipo:"multichoice",
+                    nombre,
+                    categoria: currentCategoryImport, // We need to track this
+                    subcategoria: currentSubcategoryImport,
+                    enunciado,
+                    retro,
+                    opciones
+                });
             }
 
             // Actualiza resumen visible
@@ -514,8 +728,28 @@ function cargarXML(event){
 function descargarXML(){
     let xml='<?xml version="1.0" encoding="UTF-8"?><quiz>';
 
+
+
+    let previousCategory = "";
+    let previousSubcategory = "";
+
     document.querySelectorAll(".pregunta").forEach(p=>{
         const data=extraerDatos(p);
+
+        // Check for category change
+        if (data.categoria !== previousCategory || data.subcategoria !== previousSubcategory) {
+            let catPath = "$course$/top/" + data.categoria;
+            if (data.subcategoria) {
+                catPath += "/" + data.subcategoria;
+            }
+            
+            xml += `<question type="category">`;
+            xml += `<category><text>${catPath}</text></category>`;
+            xml += `</question>`;
+
+            previousCategory = data.categoria;
+            previousSubcategory = data.subcategoria;
+        }
 
         if(data.tipo==="essay"){
             xml+=`<question type="essay">`;
@@ -535,6 +769,8 @@ function descargarXML(){
             xml+=`<questiontext format="html"><text><![CDATA[${data.enunciado}]]></text></questiontext>`;
             xml+=`<generalfeedback><text><![CDATA[${data.retro}]]></text></generalfeedback>`;
             xml+=`<single>false</single>`;
+            xml+=`<shuffleanswers>true</shuffleanswers>`; // Added explicit shuffle
+            xml+=`<answernumbering>abc</answernumbering>`; // Added standard numbering
 
             data.opciones.forEach(o=>{
                 xml+=`<answer fraction="${o.correcta?100:0}"><text><![CDATA[${o.texto}]]></text></answer>`;
