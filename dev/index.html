@@ -475,7 +475,11 @@ function agregarPregunta(datos=null){
     const btnAdd=document.createElement("button");
     btnAdd.textContent="Agregar opción";
     btnAdd.className="secondary";
-    btnAdd.onclick=()=>opcionesDiv.appendChild(crearOpcion());
+    btnAdd.onclick = () => {
+    const nuevaOpcion = crearOpcion();
+    opcionesDiv.appendChild(nuevaOpcion);
+    nuevaOpcion.querySelector('input[type="text"]').focus();
+};
 
     tipoSelect.onchange=()=>{
         if(tipoSelect.value==="essay"){
