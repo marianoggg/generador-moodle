@@ -680,12 +680,8 @@ function cargarXML(event){
                 wrapper = agregarPregunta({
                     tipo:"essay",
                     nombre,
-                    categoria: q.dataset.category || "", // Not directly in q object easily, but we parse it sequentially?
-                    // Actually, cargarXML parses question by question. It doesn't know prev category.
-                    // But wait, the XML structure has <question type="category"> separate from real questions.
-                    // When parsing we encounter them sequentially.
-                    // We need a way to track current category during import too!
-                    subcategoria: "", // Logic for import is tricky, will address next.
+                    categoria: currentCategoryImport,
+                    subcategoria: currentSubcategoryImport,
                     enunciado,
                     retro,
                     puntaje:parseFloat(q.querySelector("defaultgrade")?.textContent)||1,
