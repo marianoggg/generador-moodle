@@ -654,25 +654,27 @@ function cargarXML(event){
             const tipo=q.getAttribute("type")||"multichoice";
             
             if(tipo === "category"){
-                const text = q.querySelector("category text").textContent;
+                const text = q.querySelector("category text")?.textContent?.trim() || "";
+                console.log("Found category block:", text);
                 // Format: $course$/Top/Category/Subcategory
                 // We need to parse this.
                 const parts = text.split("/");
                 // parts[0] is $course$, [1] is Top (usually), [2] is Category, [3] is Subcategory...
                 // Let's assume standard structure.
                 if(parts.length > 2) {
-                     currentCategoryImport = parts[2];
+                     currentCategoryImport = parts[2]?.trim() || "";
                      if(currentCategoryImport) availableCategories.add(currentCategoryImport);
                      
-                     currentSubcategoryImport = parts[3] || "";
+                     currentSubcategoryImport = parts[3]?.trim() || "";
                      if(currentSubcategoryImport) availableSubcategories.add(currentSubcategoryImport);
                 }
                 return; // Don't create a question UI for category block
             }
 
-            const nombre=q.querySelector("name text")?.textContent||"";
-            const enunciado=q.querySelector("questiontext text")?.textContent||"";
-            const retro=q.querySelector("generalfeedback text")?.textContent||"";
+            console.log("Processing question type:", tipo);
+            const nombre=q.querySelector("name text")?.textContent?.trim()||"";
+            const enunciado=q.querySelector("questiontext text")?.textContent?.trim()||"";
+            const retro=q.querySelector("generalfeedback text")?.textContent?.trim()||"";
 
             let wrapper;
 
@@ -693,7 +695,7 @@ function cargarXML(event){
                 const opciones=[];
                 q.querySelectorAll("answer").forEach(a=>{
                     opciones.push({
-                        texto:a.querySelector("text").textContent,
+                        texto:a.querySelector("text")?.textContent?.trim() || "",
                         correcta:a.getAttribute("fraction")==100
                     });
                 });
