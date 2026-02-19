@@ -382,3 +382,55 @@ body.night .mic-button:hover {
     background-color: #3e3e4a;
     color: #fff;
 }
+
+/* Toggle Input/Select */
+.input-toggle-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    position: relative;
+}
+
+.input-toggle-wrapper .input-wrapper {
+    margin-bottom: 0; /* Wrapper handles margin if needed */
+    flex: 1;
+}
+
+.input-toggle-wrapper select {
+    margin-bottom: 0;
+    flex: 1;
+}
+
+.toggle-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.2rem;
+    color: #666;
+    padding: 5px;
+    border-radius: 50%;
+    transition: background 0.2s, color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+}
+
+.toggle-btn:hover {
+    background-color: #e0e0e0;
+    color: #333;
+}
+
+body.night .toggle-btn {
+    color: #aaa;
+}
+
+body.night .toggle-btn:hover {
+    background-color: #3e3e4a;
+    color: #fff;
+}
+
+.hidden {
+    display: none !important;
+}
