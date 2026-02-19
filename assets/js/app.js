@@ -13,6 +13,26 @@ function scrollAlFinal(){
     contenedor.scrollTop=contenedor.scrollHeight;
 }
 
+// Helper to create input/textarea with mic
+function crearInputConMicrofono(element, wrapper) {
+    const inputWrapper = document.createElement("div");
+    inputWrapper.className = "input-wrapper";
+    
+    // If element is textarea, we might need specific styles or handled by CSS
+    
+    const micBtn = document.createElement("button");
+    micBtn.className = "mic-button";
+    micBtn.innerHTML = "🎤"; 
+    micBtn.title = "Dictar texto"; // Generic title
+    
+    setupVoiceInput(micBtn, element, wrapper);
+
+    inputWrapper.appendChild(element);
+    inputWrapper.appendChild(micBtn);
+    
+    return inputWrapper;
+}
+
 function crearOpcion(texto="",correcta=false){
     const div=document.createElement("div");
     div.className="opcion";
@@ -28,13 +48,20 @@ function crearOpcion(texto="",correcta=false){
     input.value=texto;
     input.oninput=validarTodo;
 
+    // Wrap input with mic
+    // Note: wrapper for actualizarTitulo is null here as options don't update title directly usually
+    // But if we wanted to pass the question wrapper we'd need to change signature. 
+    // For now passing null is fine, setupVoiceInput handles it.
+    const inputWithMic = crearInputConMicrofono(input, null);
+    inputWithMic.style.flex = "1"; // Ensure it takes available space in flex container
+
     const btn=document.createElement("button");
     btn.textContent="X";
     btn.className="danger";
     btn.onclick=()=>{ div.remove(); validarTodo(); };
 
     div.appendChild(checkbox);
-    div.appendChild(input);
+    div.appendChild(inputWithMic);
     div.appendChild(btn);
 
     return div;
@@ -47,6 +74,106 @@ function actualizarTitulo(wrapper,enunciado){
     // Limita a 50 caracteres + "…"
     const resumen = texto.length > 150 ? texto.substr(0,150) + "…" : texto;
     span.textContent = resumen !== "" ? resumen : "Pregunta";
+}
+
+function setupVoiceInput(btn, textarea, wrapper) {
+    if (!('webkitSpeechRecognition' in window)) {
+        btn.style.display = 'none';
+        return;
+    }
+
+    const recognition = new webkitSpeechRecognition();
+    recognition.continuous = true; // Allow pauses
+    recognition.interimResults = false;
+    recognition.lang = 'es-ES'; // Default to Spanish
+
+    let recognizing = false;
+
+    recognition.onstart = function() {
+        recognizing = true;
+        btn.classList.add('listening');
+    };
+
+    recognition.onend = function() {
+        recognizing = false;
+        btn.classList.remove('listening');
+    };
+
+    recognition.onresult = function(event) {
+        let finalTranscript = '';
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+            if (event.results[i].isFinal) {
+                finalTranscript += event.results[i][0].transcript;
+            }
+        }
+        
+        if (finalTranscript) {
+            // Insert at cursor position or append
+            const startPos = textarea.selectionStart;
+            const endPos = textarea.selectionEnd;
+            const text = textarea.value;
+            
+            // Trim transcript to avoid double spaces if API returns them
+            finalTranscript = finalTranscript.trim();
+            
+            // Capitalize if start of text or last non-whitespace char is ./!/?
+            let i = startPos - 1;
+            while (i >= 0 && /\s/.test(text[i])) i--;
+            const lastChar = i >= 0 ? text[i] : null;
+
+            if (lastChar === null || ['.', '!', '?'].includes(lastChar)) {
+                 finalTranscript = finalTranscript.charAt(0).toUpperCase() + finalTranscript.slice(1);
+            }
+            
+            // Add space if needed: only if previous char is not whitespace
+            // AND the transcript itself doesn't already start with punctuation that shouldn't have a space (optional, but safe)
+            const prefix = (startPos > 0 && !/\s/.test(text[startPos-1])) ? " " : "";
+            
+            const newText = text.substring(0, startPos) + 
+                        prefix + finalTranscript + 
+                        text.substring(endPos);
+                        
+            textarea.value = newText;
+            
+            // Move cursor to end of inserted text
+            const newCursorPos = startPos + prefix.length + finalTranscript.length;
+            textarea.setSelectionRange(newCursorPos, newCursorPos); // Keep cursor at end of insertion
+
+            // Trigger input event to update validtion and title
+            textarea.dispatchEvent(new Event('input'));
+            
+            // Update title specifically if it's the main question text
+            if(textarea.placeholder === "Enunciado") {
+                 actualizarTitulo(wrapper, textarea);
+            }
+        }
+    };
+
+    recognition.onerror = function(event) {
+        console.error("Speech recognition error", event.error);
+        if (event.error !== 'no-speech') {
+             btn.classList.remove('listening');
+             recognizing = false;
+        }
+    };
+
+    btn.onmousedown = function(e) {
+        e.preventDefault(); // Prevent button from stealing focus
+    };
+
+    btn.onclick = function() {
+        if (recognizing) {
+            recognition.stop();
+        } else {
+            // If starting and cursor is at 0 but we have text, assume we want to append
+            // This fixes the issue where clicking the button might have reset selection or user forgot to click end
+            if (textarea.value.length > 0 && textarea.selectionStart === 0 && textarea.selectionEnd === 0) {
+                textarea.selectionStart = textarea.value.length;
+                textarea.selectionEnd = textarea.value.length;
+            }
+            recognition.start();
+        }
+    };
 }
 
 function agregarPregunta(datos=null){
@@ -76,6 +203,10 @@ function agregarPregunta(datos=null){
     nombre.placeholder="Nombre interno (no visible para el alumno)";
     nombre.value=datos?.nombre||"";
     nombre.oninput=validarTodo;
+    
+    // Wrap nombre with mic
+    const nombreWrapper = crearInputConMicrofono(nombre, null);
+    nombreWrapper.style.flex = "2"; // Restore flex style from CSS rule .fila-horizontal input[type="text"]
 
     const tipoSelect=document.createElement("select");
     tipoSelect.innerHTML=`
@@ -86,7 +217,7 @@ function agregarPregunta(datos=null){
     tipoSelect.style.height = "33px";
     tipoSelect.style.padding = "5px 10px";
 
-    filaSuperior.appendChild(nombre);
+    filaSuperior.appendChild(nombreWrapper);
     filaSuperior.appendChild(tipoSelect);
 
     const enunciado=document.createElement("textarea");
@@ -95,9 +226,14 @@ function agregarPregunta(datos=null){
     enunciado.oninput=()=>{ actualizarTitulo(wrapper,enunciado); validarTodo(); };
     enunciado.style.height = "120px";
 
+    const enunciadoWrapper = crearInputConMicrofono(enunciado, wrapper);
+
     const retro=document.createElement("textarea");
     retro.placeholder="Retroalimentación";
     retro.value=datos?.retro||"";
+    
+    // Wrap retro with mic
+    const retroWrapper = crearInputConMicrofono(retro, null);
 
     const opcionesDiv=document.createElement("div");
     const essayDiv=document.createElement("div");
@@ -147,9 +283,11 @@ function agregarPregunta(datos=null){
     const graderinfo=document.createElement("textarea");
     graderinfo.placeholder="Información para el corrector";
     graderinfo.value=datos?.graderinfo||"";
+    
+    const graderinfoWrapper = crearInputConMicrofono(graderinfo, null);
 
     essayDiv.appendChild(configDiv);
-    essayDiv.appendChild(graderinfo);
+    essayDiv.appendChild(graderinfoWrapper);
 
     if(datos?.opciones){
         datos.opciones.forEach(o=>{
@@ -213,8 +351,9 @@ function agregarPregunta(datos=null){
     botonesDiv.appendChild(btnEliminar);
 
     body.appendChild(filaSuperior);
-    body.appendChild(enunciado);
-    body.appendChild(retro);
+    body.appendChild(filaSuperior);
+    body.appendChild(enunciadoWrapper);
+    body.appendChild(retroWrapper);
     body.appendChild(opcionesDiv);
     body.appendChild(btnAdd);
     body.appendChild(essayDiv);

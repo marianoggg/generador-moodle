@@ -277,3 +277,108 @@ input:checked + .slider::before{
     transform: translateX(30px);
     content:"🌙";
 }
+
+/* Speech to text */
+.input-wrapper {
+    position: relative;
+    width: 100%;
+    margin-bottom: 8px; /* Move margin here from generic input rule */
+}
+
+/* Remove margin from wrapped inputs to fix height calculation for centering */
+.input-wrapper textarea,
+.input-wrapper input[type="text"] {
+    width: 100%;
+    padding-right: 40px; /* Space for the mic button */
+    margin-bottom: 0; 
+}
+
+/* Specific overrides for context */
+.opcion .input-wrapper {
+    margin-bottom: 0; /* Option inputs don't have bottom margin */
+}
+
+.input-wrapper textarea,
+.input-wrapper input[type="text"] {
+    width: 100%;
+    padding-right: 40px; /* Space for the mic button */
+}
+
+.mic-button {
+    position: absolute;
+    bottom: 15px;
+    right: 10px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.2rem;
+    color: #666;
+    padding: 5px;
+    border-radius: 50%;
+    transition: background 0.2s, color 0.2s, transform 0.1s;
+    line-height: normal;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: none;
+    opacity: 0;
+    pointer-events: none; /* Prevent clicks when hidden */
+}
+
+/* Position adjustment for single-line inputs */
+.input-wrapper input[type="text"] + .mic-button {
+    bottom: auto; /* Reset bottom */
+    top: 50%;
+    margin-top: -15px; /* Half of height (30px) to center */
+    transform: none; /* Remove transform that conflicts with animation */
+}
+
+/* Position adjustment for textareas to be closer to bottom-right */
+.input-wrapper textarea + .mic-button {
+    bottom: 5px; 
+}
+
+/* Hover effect - just scale, no translate needed now */
+.input-wrapper input[type="text"] + .mic-button:hover,
+.input-wrapper textarea + .mic-button:hover {
+    transform: scale(1.1);
+}
+
+/* Show button when element is focused, button is hovered, or listening */
+.input-wrapper textarea:focus + .mic-button,
+.input-wrapper input:focus + .mic-button,
+.mic-button:focus,
+.mic-button:hover,
+.mic-button.listening {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.mic-button:hover {
+    background-color: #f0f0f0;
+    color: #333;
+    transform: scale(1.1);
+    box-shadow: none;
+}
+
+.mic-button.listening {
+    color: #c62828;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+
+body.night .mic-button {
+    color: #aaa;
+}
+
+body.night .mic-button:hover {
+    background-color: #3e3e4a;
+    color: #fff;
+}
